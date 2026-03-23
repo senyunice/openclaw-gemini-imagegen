@@ -1,116 +1,89 @@
-# OpenClaw 图片生成套件
+# OpenClaw + Gemini 图片生成套件 / Image Generation Suite
+
+> 🤖 AI 全自动图片生成 · 描述即生成 · 无需人工干预
+
+---
+
+## 🌍 选择语言 / Choose Language
+
+| 🇨🇳 [中文详细介绍 →](docs/index-cn.html) | 🇺🇸 [English Details →](docs/index-en.html) |
+|:---:|:---:|
+| 中文海报 + 中文文档 | English Poster + English Docs |
+
+---
+
+## ⚡ 快速预览 Quick Preview
 
 ![中文海报](poster.png) ![English Poster](poster-en.png)
 
-> ⚠️ **重要**：本文档中所有路径里的 `%USERPROFILE%` 是占位符，需要替换为你自己的 Windows 用户名。
->
-> 例如：`%USERPROFILE%\.openclaw\workspace` 实际是 `C:\Users\你的用户名\.openclaw\workspace`
->
-> 查看方法：打开文件资源管理器地址栏 `C:\Users\` 里面那个文件夹名就是你的用户名。
+---
 
-## 简介
+## 🚀 特性 Features
 
-给 OpenClaw AI 助手使用的 Gemini 网页版图片生成完整解决方案。包含所有配置文件、脚本和使用说明。
+| | |
+|---|---|
+| 🖼️ **全自动流程** / Fully Automated | 一句话 = 一张图 / One prompt = One image |
+| 🔍 **Chrome 缓存监控** / Cache Monitor | 自动捕获无需下载 / Auto-capture, no manual download |
+| 🧠 **MCP 图片审核** / MCP Review | AI 质量把关 / AI quality check |
+| 🔒 **独立 Profile** / Isolated Profile | 与日常 Chrome 完全隔离 / Separate from daily Chrome |
+| 📚 **完整文档** / Complete Docs | 5 分钟上手 / Ready in 5 minutes |
+
+## 工作流程 / Workflow
+
+```
+🚀 Launch Chrome → 🌐 Open Gemini → ✍️ AI Types Prompt
+  → ✨ Gemini Generates → 📥 Auto-Download → 🧠 MCP Review → Send
+```
 
 ---
 
-## 包含内容
+## 📁 包含内容 / Contents
 
-| 文件/文件夹 | 说明 |
-|------------|------|
-| `gemini-image-SKILL.md` | Gemini 生图技能（复制到 skills 目录） |
+| 文件 | 说明 |
+|---|---|
+| `gemini-image-SKILL.md` | Gemini 生图技能 |
+| `wait_download_cache.py` | Chrome 缓存监控脚本 |
 | `gemini-image 完整流程.md` | 详细操作步骤 |
 | `browser-SETUP.md` | 浏览器配置指南 |
-| `minimax-mcp-SETUP.md` | **MiniMax MCP 图片审核配置指南** |
-| `wait_download_cache.py` | Chrome 缓存监控下载脚本 |
-| `问题排查指南.md` | **21个常见问题及解决方案汇总** |
-| `快速参考.txt` | 速查卡 |
+| `minimax-mcp-SETUP.md` | MiniMax MCP 图片审核配置 |
+| `问题排查指南.md` | 常见问题汇总 |
 
 ---
 
-## 手动配置步骤（5分钟）
+## 🌐 在线预览 / Live Preview
 
-### 第一步：复制 Skill 文件
-将 `gemini-image-SKILL.md` 复制到：
-```
-C:\Users\<用户名>\.openclaw\workspace\skills\gemini-image\SKILL.md
-```
-> 如果 `skills` 目录不存在，先手动创建整个路径。
+- 🇨🇳 [中文详情页](docs/index-cn.html) — 中文字体 + 中文海报
+- 🇺🇸 [English Detail Page](docs/index-en.html) — English font + English poster
 
-### 第二步：复制下载脚本
-将 `wait_download_cache.py` 复制到：
-```
-C:\Users\<用户名>\.openclaw\workspace\wait_download_cache.py
-```
+> ⚠️ 详情页需启用 GitHub Pages（Settings → Pages → Source: /docs）
 
-### 第三步：创建 Chrome 专用配置目录
-打开 PowerShell，运行：
+---
+
+## ⚙️ 快速配置 / Quick Setup
+
+### Windows
+
 ```powershell
+# 1. 创建 Chrome 配置目录
 New-Item -Path "C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw" -ItemType Directory -Force
+
+# 2. 启动 Chrome
+Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+  -ArgumentList "--user-data-dir=C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw","--remote-debugging-port=9222"
+
+# 3. 在 Chrome 中打开 gemini.google.com 并登录
 ```
 
-### 第四步：启动 Chrome 并登录
-在 PowerShell 运行：
+### 3. 复制文件
+
 ```powershell
-Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--user-data-dir=C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw","--remote-debugging-port=9222"
-```
-然后在打开的 Chrome 中访问 `https://gemini.google.com`，扫码或账号登录。
+# 复制 SKILL 文件
+copy gemini-image-SKILL.md "$env:USERPROFILE\.openclaw\workspace\skills\gemini-image\SKILL.md"
 
-> 以后每次使用会自动记住登录状态，除非删除配置目录。
-
-### 第五步：验证配置
-重启 Chrome 后，确认 Gemini 页面右上角显示你的 Google 账号，即配置成功。
-
----
-
-## 核心工作流程
-
-```
-用户请求 → 启动 Chrome → 打开 Gemini → 输入提示词 → 发送
-     ↓
-轮询检查图片（每3秒，最长1分钟）
-     ↓
-图片出现 → 点击下载完整尺寸图片
-     ↓
-Chrome 缓存监控（每5秒，最长3分钟）
-     ↓
-检测到文件 → 等待大小稳定 → 自动判断类型 → 保存到 media
-     ↓
-MiniMax MCP 审核 → 发送给用户
+# 复制脚本
+copy wait_download_cache.py "$env:USERPROFILE\.openclaw\workspace\wait_download_cache.py"
 ```
 
 ---
 
-## 关键路径
-
-| 项目 | 路径 |
-|------|------|
-| Chrome 配置目录 | `C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw` |
-| Chrome 缓存目录 | `C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw\Default\Cache\Cache_Data` |
-| 图片保存目录 | `C:\Users\<用户名>\.openclaw\media\` |
-| 下载监控脚本 | `C:\Users\<用户名>\.openclaw\workspace\wait_download_cache.py` |
-| Skill 文件 | `C:\Users\<用户名>\.openclaw\workspace\skills\gemini-image\SKILL.md` |
-| Chrome 调试端口 | 9222 |
-
----
-
-## 所需权限
-
-- Chrome 浏览器控制（browser MCP 工具）
-- Python 脚本执行
-- 文件系统读写
-- MiniMax MCP（图片审核）
-
----
-
-## 日常使用
-
-配置完成后，以后每次生图只需：
-1. 启动专用 Chrome（含调试端口）
-2. 告诉 AI 助手"生图 xxx"
-
-AI 会自动执行完整流程。
-
----
-
-*创建于: 2026-03-23*
+*Created by senyunice · 2026-03-23*
