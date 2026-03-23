@@ -1,5 +1,7 @@
 # OpenClaw 图片生成套件
 
+![OpenClaw + Gemini 图片生成套件](poster.png)
+
 > ⚠️ **重要**：本文档中所有路径里的 `%USERPROFILE%` 是占位符，需要替换为你自己的 Windows 用户名。
 >
 > 例如：`%USERPROFILE%\.openclaw\workspace` 实际是 `C:\Users\你的用户名\.openclaw\workspace`
