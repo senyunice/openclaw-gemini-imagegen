@@ -1,6 +1,6 @@
 # OpenClaw 图片生成套件
 
-![OpenClaw + Gemini 图片生成套件](poster.png)
+![中文海报](poster.png) ![English Poster](poster-en.png)
 
 > ⚠️ **重要**：本文档中所有路径里的 `%USERPROFILE%` 是占位符，需要替换为你自己的 Windows 用户名。
 >
