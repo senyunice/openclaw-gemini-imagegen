@@ -1,0 +1,17 @@
+# Chrome Profile（用户隐私数据）
+Chrome/
+*.chrome/
+User Data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
