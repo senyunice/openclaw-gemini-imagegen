@@ -1,0 +1,111 @@
+# Gemini 图片去水印工具
+
+## 概述
+
+Gemini 生成的所有图片右下角都有水印。本工具提供两种去水印方案，自动集成到生图流程中。
+
+---
+
+## 方案一：Lama Inpainting（首选，效果最好）
+
+### 简介
+使用本地深度学习模型（LaMA）进行智能内容填充，效果最干净，自然无痕迹。
+
+### 依赖
+已安装（pip）：
+- `simple-lama-inpainting`
+- `rembg`
+- `torch`
+- `opencv-python`
+- `numpy`
+- `Pillow`
+
+### 使用方法
+```bash
+python lama_inpaint.py <输入图片路径> <输出图片路径>
+```
+
+### 示例
+```bash
+python lama_inpaint.py "C:\Users\用户名\.openclaw\media\gemini_output.png" "C:\Users\用户名\.openclaw\workspace\minimax-output\gemini_nowm.png"
+```
+
+### 水印区域识别
+- 自动识别右下角水印位置
+- 分辨率 > 1024：水印区域 96×96，右下角偏移 64px
+- 分辨率 ≤ 1024：水印区域 48×48，右下角偏移 32px
+
+### 处理后验证
+使用 MiniMax MCP 审核右下角：
+```bash
+mcporter call minimax.understand_image prompt="检查这张图片右下角120x120范围，有没有残留水印？右下角自然吗，有没有修补痕迹？" image_source="处理后图片路径"
+```
+
+### 判断标准
+- ✅ 无残留水印且自然 → 进入内容审核步骤
+- ❌ 有残留 → 重新执行 Lama（增大 margin 参数）
+
+---
+
+## 方案二：OpenCV TELEA（备用方案）
+
+### 简介
+使用 OpenCV 传统算法进行智能填充，速度快但效果略逊于 Lama。
+
+### 依赖
+已安装（pip）：
+- `opencv-python`
+- `numpy`
+- `Pillow`
+
+### 使用方法
+```bash
+python remove_watermark_cv.py <输入图片路径> <输出图片路径>
+```
+
+### 示例
+```bash
+python remove_watermark_cv.py "input.png" "output.png"
+```
+
+### 适用场景
+- Lama Inpainting 多次处理仍不干净时
+- 不想安装深度学习依赖时
+- 快速处理低分辨率图片
+
+---
+
+## 在生图流程中的位置
+
+```
+步骤7: 下载图片
+     ↓
+步骤8: Lama Inpainting 去水印
+     ↓
+步骤9: MCP 审核右下角（水印干净？）
+     ↓
+不干净 → 重复步骤8（最多3次）→ 切换 OpenCV 备用方案
+干净 ↓
+步骤11: MiniMax MCP 内容审核 → 发送用户
+```
+
+---
+
+## 注意事项
+
+1. 所有 Gemini 生成图片都必须经过去水印步骤，不能跳过
+2. 处理后必须用 MCP 审核确认无残留再发送给用户
+3. Lama 模型较大，首次运行可能需要下载模型文件
+4. 如遇 Lama 失败，自动切换 OpenCV 方案
+
+---
+
+## 工具来源
+
+- Lama Inpainting: simple-lama-inpainting (pip package)
+- OpenCV: opencv-python (pip package)
+- AI 审核: MiniMax MCP (minimax.understand_image)
+
+---
+
+*更新于: 2026-03-24*

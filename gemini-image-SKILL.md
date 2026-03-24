@@ -1,10 +1,10 @@
 # Gemini 图片生成技能 - 完整工作流
 
 ## 功能
-使用 Gemini 网页版生成 AI 图片，完成后自动审核并发送给用户
+使用 Gemini 网页版生成 AI 图片，完成后自动去水印、审核并发送给用户
 
 ## 核心流程
-1. 打开 Gemini → 2. 点击制作图片 → 3. 输入描述（必须加前缀）→ 4. 发送 → 5. **轮询检查图片是否生成（3秒/次，最长1分钟）** → 6. **点击下载完整尺寸图片** → 7. **Chrome缓存轮询监控（每5秒/次，最长3分钟），自动判断文件类型** → 8. **MiniMax MCP 审核图片** → 9. 审核通过后发送给用户
+1. 打开 Gemini → 2. 点击制作图片 → 3. 输入描述（必须加前缀）→ 4. 发送 → 5. **轮询检查图片是否生成（3秒/次，最长1分钟）** → 6. **点击下载完整尺寸图片** → 7. **Chrome缓存轮询监控（每5秒/次，最长3分钟），自动判断文件类型** → 8. **Lama Inpainting 去水印** → 9. **MCP 审核水印是否干净** → 10. 不干净则重复步骤 8-9，干净后执行步骤 11 → 11. 发送给用户
 
 ---
 
@@ -98,38 +98,32 @@ python "%USERPROFILE%\.openclaw\workspace\wait_download_cache.py"
 - JPEG：`FF D8 FF` → `.jpg`
 - 其他 → 默认 `.png`
 
-**下载完成后再进入下一步（MiniMax MCP 审核）**
+**下载完成后再进入下一步（去水印）**
 
 #### 备用下载方案（仅在缓存监控超过 3 分钟仍未检测到新文件时启用）
 ```python
 import os, time
 
 download_dir = r"%USERPROFILE%\Downloads"
-target_files = set(os.listdir(download_dir))  # 记录下载前的文件列表
+target_files = set(os.listdir(download_dir))
 
 # 点击下载按钮后，持续轮询等待文件出现
-max_wait = 120  # 最多等 120 秒
-interval = 3    # 每 3 秒检查一次
+max_wait = 120
+interval = 3
 start = time.time()
 
 while time.time() - start < max_wait:
     current_files = set(os.listdir(download_dir))
-    new_files = current_files - target_files
-    
-    # 检查是否有新文件（png/jpg/webp）
-    new_imgs = [f for f in new_files if f.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
+    new_imgs = [f for f in (current_files - target_files)
+                if f.lower().endswith(('.png','.jpg','.jpeg','.webp'))]
     if new_imgs:
-        # 取最新下载的文件
         newest = max([os.path.join(download_dir, f) for f in new_imgs], key=os.path.getmtime)
         print(f"下载完成: {newest}")
         break
-    
     time.sleep(interval)
 else:
     print("下载超时，尝试备用方案")
-    # 触发备用下载方案
 
-# 移动到目标目录
 import shutil
 output = r"%USERPROFILE%\.openclaw\media\gemini_output.png"
 shutil.copy(newest, output)
@@ -137,33 +131,6 @@ print(f"已保存到: {output}")
 ```
 
 **下载完成后保存路径：** `%USERPROFILE%\.openclaw\media\gemini_output.png`
-
-#### 备用下载方案（仅在缓存监控超过 3 分钟仍未检测到新文件时启用）
-从页面提取图片 URL，用 Python 直接下载：
-
-```python
-import urllib.request, ssl, re
-
-# 从页面 HTML 提取图片 URL
-# 执行 JS: document.querySelectorAll('img') 获取所有图片元素
-# 找到 src 包含 lh3.googleusercontent.com 且宽度 > 200px 的
-
-img_url = "https://lh3.googleusercontent.com/gg/..."
-
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Referer": "https://gemini.google.com/",
-}
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
-req = urllib.request.Request(img_url, headers=headers)
-with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
-    data = resp.read()
-    with open(r'%USERPROFILE%\.openclaw\media\gemini_output.png', 'wb') as f:
-        f.write(data)
-    print(f"下载成功: {len(data)} bytes")
-```
 
 #### 分享链接下载（备用）
 1. 点击"分享图片"按钮
@@ -174,13 +141,39 @@ with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
 
 ---
 
-### 步骤9: MiniMax MCP 审核图片
+### 步骤8: Lama Inpainting 去水印
+
+**所有 Gemini 生成图片都必须经过此步骤！**
+
+使用本地 AI（Lama Inpainting）去除右下角水印：
+
+```bash
+python "%USERPROFILE%\.openclaw\workspace\lama_inpaint.py" "%USERPROFILE%\.openclaw\media\gemini_output.png" "%USERPROFILE%\.openclaw\workspace\minimax-output\gemini_nowm.png"
+```
+
+**去水印后必须用 MCP 审核右下角，确认干净后再发送：**
+```bash
+mcporter call minimax.understand_image prompt="检查这张图片右下角120x120范围，有没有残留水印？右下角自然吗，有没有修补痕迹或色差？" image_source="去水印后图片路径"
+```
+
+**判断标准：**
+- 有残留水印 → 重新去水印（增大 margin 参数），重复 MCP 审核
+- 无残留且自然 → 进入步骤 11
+
+**若 Lama 填充 3 次仍不干净**，改用 OpenCV TELEA 算法备用方案：
+```bash
+python "%USERPROFILE%\.openclaw\workspace\remove_watermark_cv.py" <输入图片> <输出图片>
+```
+
+---
+
+### 步骤9: MiniMax MCP 审核图片（内容审核）
 
 **审核给自己看，不发给用户！**
 
 调用 MiniMax MCP 图片理解工具：
 ```bash
-mcporter call minimax.understand_image prompt="描述这张图片的内容：主题、风格、颜色、构图、文字内容等细节，和用户需求对比是否一致" image_source="%USERPROFILE%\.openclaw\media\gemini_output.png"
+mcporter call minimax.understand_image prompt="描述这张图片的内容：主题、风格、颜色、构图、文字内容等细节，和用户需求对比是否一致" image_source="去水印后图片路径"
 ```
 
 **审核判断标准：**
@@ -246,21 +239,6 @@ Generate Image Cute cartoon avatar, robot character, colorful gradient, soft lig
 
 ---
 
-## 下载等待脚本（Python）
-```python
-import time, re, urllib.request, ssl
-
-def wait_and_download_gemini_image(page_url, output_path, timeout=120):
-    """等待图片出现并下载"""
-    import urllib.request, ssl, time
-    # 1. 从分享链接提取图片URL
-    # 2. 用 ssl context 下载
-    # 3. 保存到 output_path
-    pass
-```
-
----
-
 ## 快速排查
 
 | 问题 | 解决方案 |
@@ -290,7 +268,13 @@ Chrome缓存轮询监控（每5秒/次，最长3分钟）
      ↓
 检测到文件 → 等待大小稳定 → 自动判断类型 → 保存到media
      ↓
-MiniMax MCP 审核（自己判断，不告知用户）
+Lama Inpainting 去水印
+     ↓
+MCP 审核右下角（水印干净？）
+     ↓
+不干净 → 重新去水印 → 再次审核
+干净 ↓
+MiniMax MCP 内容审核（自己判断，不告知用户）
      ↓
 通过 → message 工具发送给用户
 不通过 → 重新生成，重复以上步骤
@@ -299,4 +283,4 @@ MiniMax MCP 审核（自己判断，不告知用户）
 ---
 
 *创建于: 2026-03-07*
-*更新于: 2026-03-23*
+*更新于: 2026-03-24*
