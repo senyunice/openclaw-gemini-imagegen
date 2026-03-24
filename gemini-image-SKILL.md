@@ -1,10 +1,10 @@
 # Gemini 图片生成技能 - 完整工作流
 
 ## 功能
-使用 Gemini 网页版生成 AI 图片，完成后自动去水印、审核并发送给用户
+使用 Gemini 网页版生成 AI 图片，完成后自动审核并发送给用户
 
 ## 核心流程
-1. 打开 Gemini → 2. 点击制作图片 → 3. 输入描述（必须加前缀）→ 4. 发送 → 5. **轮询检查图片是否生成（3秒/次，最长1分钟）** → 6. **点击下载完整尺寸图片** → 7. **Chrome缓存轮询监控（每5秒/次，最长3分钟），自动判断文件类型** → 8. **Lama Inpainting 去水印** → 9. **MCP 审核水印是否干净** → 10. 不干净则重复步骤 8-9，干净后执行步骤 11 → 11. 发送给用户
+1. 打开 Gemini → 2. 点击制作图片 → 3. 输入描述（必须加前缀）→ 4. 发送 → 5. **轮询检查图片是否生成（3秒/次，最长1分钟）** → 6. **点击下载完整尺寸图片** → 7. **Chrome缓存轮询监控（每5秒/次，最长3分钟），自动判断文件类型** → 8. 发送给用户
 
 ---
 
@@ -98,7 +98,7 @@ python "%USERPROFILE%\.openclaw\workspace\wait_download_cache.py"
 - JPEG：`FF D8 FF` → `.jpg`
 - 其他 → 默认 `.png`
 
-**下载完成后再进入下一步（去水印）**
+**下载完成后保存路径：** `%USERPROFILE%\.openclaw\media\gemini_output.png`
 
 #### 备用下载方案（仅在缓存监控超过 3 分钟仍未检测到新文件时启用）
 ```python
@@ -130,8 +130,6 @@ shutil.copy(newest, output)
 print(f"已保存到: {output}")
 ```
 
-**下载完成后保存路径：** `%USERPROFILE%\.openclaw\media\gemini_output.png`
-
 #### 分享链接下载（备用）
 1. 点击"分享图片"按钮
 2. 等待分享对话框弹出
@@ -141,54 +139,8 @@ print(f"已保存到: {output}")
 
 ---
 
-### 步骤8: Lama Inpainting 去水印
-
-**所有 Gemini 生成图片都必须经过此步骤！**
-
-使用本地 AI（Lama Inpainting）去除右下角水印：
-
-```bash
-python "%USERPROFILE%\.openclaw\workspace\lama_inpaint.py" "%USERPROFILE%\.openclaw\media\gemini_output.png" "%USERPROFILE%\.openclaw\workspace\minimax-output\gemini_nowm.png"
-```
-
-**去水印后必须用 MCP 审核右下角，确认干净后再发送：**
-```bash
-mcporter call minimax.understand_image prompt="检查这张图片右下角120x120范围，有没有残留水印？右下角自然吗，有没有修补痕迹或色差？" image_source="去水印后图片路径"
-```
-
-**判断标准：**
-- 有残留水印 → 重新去水印（增大 margin 参数），重复 MCP 审核
-- 无残留且自然 → 进入步骤 11
-
-**若 Lama 填充 3 次仍不干净**，改用 OpenCV TELEA 算法备用方案：
-```bash
-python "%USERPROFILE%\.openclaw\workspace\remove_watermark_cv.py" <输入图片> <输出图片>
-```
-
----
-
-### 步骤9: MiniMax MCP 审核图片（内容审核）
-
-**审核给自己看，不发给用户！**
-
-调用 MiniMax MCP 图片理解工具：
-```bash
-mcporter call minimax.understand_image prompt="描述这张图片的内容：主题、风格、颜色、构图、文字内容等细节，和用户需求对比是否一致" image_source="去水印后图片路径"
-```
-
-**审核判断标准：**
-- 图片是否清晰、内容完整
-- 图片是否符合用户的原始需求（人物/场景/风格/动作等）
-- 质量是否达标
-
-**审核结果处理：**
-- ✅ **通过**：图片符合需求 → 直接发送给用户
-- ❌ **不通过**：图片不符合需求 → 重新生成，不告知用户审核过程
-
----
-
-### 步骤10: 发送图片给用户
-审核通过后，使用 message 工具发送图片给用户：
+### 步骤8: 发送图片给用户
+使用 message 工具发送图片给用户：
 ```
 message action=send channel=openclaw-weixin media=图片路径
 ```
@@ -232,10 +184,8 @@ Generate Image Cute cartoon avatar, robot character, colorful gradient, soft lig
 1. **每次 snapshot 后元素引用可能会变化**，必须重新获取
 2. 需要登录 Google 账号
 3. **下载必须等待图片加载完成后再操作**，不要提前点击
-4. **MCP 审核不需要告知用户**，自己判断即可
-5. 建议使用英文描述
-6. 下载位置默认: `%USERPROFILE%\Downloads\`
-7. MCP 审核判断不通过时，自行重新生成，不向用户说明
+4. 建议使用英文描述
+5. 下载位置默认: `%USERPROFILE%\Downloads\`
 
 ---
 
@@ -247,7 +197,6 @@ Generate Image Cute cartoon avatar, robot character, colorful gradient, soft lig
 | 下载按钮点不了 | 图片还没加载完，等待更长时间 |
 | 下载后文件未出现 | 继续等待，图片大下载慢，最长等 120 秒 |
 | 下载 403 错误 | 用分享链接方式或 Python ssl 方式下载 |
-| MCP 审核失败 | 检查图片路径是否正确 |
 | 图片模糊 | 点击"下载完整尺寸的图片"而非"复制图片" |
 
 ---
@@ -268,16 +217,7 @@ Chrome缓存轮询监控（每5秒/次，最长3分钟）
      ↓
 检测到文件 → 等待大小稳定 → 自动判断类型 → 保存到media
      ↓
-Lama Inpainting 去水印
-     ↓
-MCP 审核右下角（水印干净？）
-     ↓
-不干净 → 重新去水印 → 再次审核
-干净 ↓
-MiniMax MCP 内容审核（自己判断，不告知用户）
-     ↓
-通过 → message 工具发送给用户
-不通过 → 重新生成，重复以上步骤
+message 工具发送给用户
 ```
 
 ---

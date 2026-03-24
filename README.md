@@ -2,7 +2,7 @@
 
 # OpenClaw + Gemini 图片生成套件
 
-> 🤖 AI 全自动图片生成 · 描述即生成 · 去水印全自动化 · 无需人工干预
+> 🤖 AI 全自动图片生成 · 描述即生成 · 无需人工干预
 
 ---
 
@@ -16,12 +16,10 @@
 
 | 文件 | 说明 |
 |------|------|
-| `gemini-image-SKILL.md` | Gemini 生图技能（含去水印流程） |
+| `gemini-image-SKILL.md` | Gemini 生图技能 |
 | `browser-SETUP.md` | 浏览器配置指南 |
 | `minimax-mcp-SETUP.md` | MiniMax MCP 图片审核配置 |
 | `wait_download_cache.py` | Chrome 缓存监控脚本 |
-| `lama_inpaint.py` | **Lama AI 去水印脚本（首选）** |
-| `remove_watermark_cv.py` | **OpenCV 去水印脚本（备用）** |
 | `问题排查指南.md` | 常见问题及解决方案 |
 | `快速参考.txt` | 速查卡 |
 
@@ -36,13 +34,10 @@ C:\Users\<用户名>\.openclaw\workspace\skills\gemini-image\SKILL.md
 ```
 
 ### 第二步：复制脚本文件
-将以下文件复制到：
+将 `wait_download_cache.py` 复制到：
 ```
 C:\Users\<用户名>\.openclaw\workspace\
 ```
-- `wait_download_cache.py`（Chrome 缓存监控）
-- `lama_inpaint.py`（Lama AI 去水印）
-- `remove_watermark_cv.py`（OpenCV 去水印备用）
 
 ### 第三步：创建 Chrome 配置目录
 ```powershell
@@ -73,13 +68,7 @@ Chrome 缓存监控（每5秒，最长3分钟）
      ↓
 检测到文件 → 等待大小稳定 → 自动判断类型 → 保存到 media
      ↓
-Lama AI 去水印
-     ↓
-MCP 审核右下角（水印干净？）
-     ↓
-不干净 → 重新去水印 → 再次审核
-干净 ↓
-MiniMax MCP 内容审核 → 发送给用户
+发送给用户
 ```
 
 ---
@@ -91,37 +80,9 @@ MiniMax MCP 内容审核 → 发送给用户
 | Chrome 配置目录 | `C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw` |
 | Chrome 缓存目录 | `C:\Users\<用户名>\AppData\Local\Google\Chrome\OpenClaw\Default\Cache\Cache_Data` |
 | 图片保存目录 | `C:\Users\<用户名>\.openclaw\media\` |
-| Lama 去水印脚本 | `C:\Users\<用户名>\.openclaw\workspace\lama_inpaint.py` |
-| OpenCV 去水印脚本 | `C:\Users\<用户名>\.openclaw\workspace\remove_watermark_cv.py` |
 | 下载监控脚本 | `C:\Users\<用户名>\.openclaw\workspace\wait_download_cache.py` |
 | Skill 文件 | `C:\Users\<用户名>\.openclaw\workspace\skills\gemini-image\SKILL.md` |
 | Chrome 调试端口 | 9222 |
-
----
-
-## 去水印工具说明
-
-### 首选：Lama Inpainting（本地 AI，效果最好）
-
-```bash
-python lama_inpaint.py <输入图片> <输出图片>
-```
-
-- 使用本地深度学习模型（LLaMA）智能填充
-- 自动识别右下角水印区域
-- 水印区域：96×96（分辨率>1024）或 48×48
-- 无需网络，完全离线运行
-- 处理后用 MCP 审核确认无残留
-
-### 备用：OpenCV TELEA（传统算法）
-
-```bash
-python remove_watermark_cv.py <输入图片> <输出图片>
-```
-
-- 使用 OpenCV 智能填充算法
-- 速度较快但效果略逊于 Lama
-- 当 Lama 多次不干净时使用
 
 ---
 
@@ -140,7 +101,7 @@ python remove_watermark_cv.py <输入图片> <输出图片>
 1. 启动专用 Chrome（含调试端口）
 2. 告诉 AI 助手"生图 xxx"
 
-AI 会自动执行完整流程（生成 → 下载 → 去水印 → 审核 → 发送）。
+AI 会自动执行完整流程（生成 → 下载 → 发送）。
 
 ---
 
